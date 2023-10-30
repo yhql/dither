@@ -30,33 +30,33 @@ impl From<DynamicImage> for VecImg {
     fn from(img: DynamicImage) -> Self {
         let (w, h) = img.dimensions();
 
-        // let pixels: Vec<u8> = img
-        //     .pixels()
-        //     // .map(|x| x.2.to_rgb().0[0] as f32 / 256.)
-        //     .map(|x| x.2.to_luma().0[0] as f32 / 256.)
-        //     // .map(|x| x.sqrt())
-        //     .map(srgb_to_linear)
-        //     .map(|x| (x * 256.) as u8)
-        //     .collect();
-        // let bins = bin_lum(pixels);
-        // let threshold = bins
-        //     .iter()
-        //     .enumerate()
-        //     .fold(0., |acc, (i, bin)| acc + (i as f32 / *bin as f32))
-        //     / bins.iter().sum::<u32>() as f32;
+        // Perform srgb_to_linear from the RGB image and convert to luminance
+        // Although `image` can do `.to_luma`, applying srgb_to_linear before
+        // leads to useless conversions, so everything done at once here.
+        //
+        // https://www.w3.org/WAI/GL/wiki/Relative_luminance
 
         let pixels: Vec<f32> = img
             .pixels()
-            // .map(|x| x.2.to_rgb().0[0] as f32 / 256.)
-            .map(|x| x.2.to_luma().0[0] as f32 / 256.)
-            .map(srgb_to_linear)
+            .map(|(_, _, rgb)| {
+                0.2126 * srgb_to_linear(rgb.0[0] as f32 / 255.)
+                    + 0.7152 * srgb_to_linear(rgb.0[1] as f32 / 255.)
+                    + 0.0722 * srgb_to_linear(rgb.0[2] as f32 / 255.)
+            })
             .collect();
 
         // TODO: Use Otsu's method to find a threshold?
         // the doom pictures always look too dark...
-        let threshold = 0.5;
+        // let threshold = 0.5;
         // let threshold = pixels.iter().sum::<f32>() / pixels.len() as f32;
         // let threshold = pixels.iter().fold(0., |acc, pixel| if pixel > &acc { *pixel } else { acc }) / 2.;
+
+        let bins = bin_lum(pixels.iter().map(|p| (p * 255.) as u8).collect());
+        let threshold = bins
+            .iter()
+            .enumerate()
+            .fold(0., |acc, (i, bin)| acc + (i as f32 / *bin as f32))
+            / bins.iter().sum::<u32>() as f32;
 
         VecImg {
             w: w as usize,

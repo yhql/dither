@@ -23,11 +23,13 @@ fn dither_file<const N: usize>(filename: &PathBuf, f: &Filter<N>) {
         image::ImageBuffer::from_raw(w, h, new_img).expect("invalid vec");
 
     let out_name = format!(
-        "dithered/{}_{}_{:.2}.png",
+        "dithered/{}_{}_{:.4}.png",
         filename.display(),
         f.name,
         im.threshold
     );
+
+    std::fs::create_dir_all("./dithered/imgs/").expect("Could not create output folder");
     println!("[+] Saving '{}'", out_name);
     imgbuf.save(out_name).expect("Could not save file");
 }
@@ -35,9 +37,9 @@ fn dither_file<const N: usize>(filename: &PathBuf, f: &Filter<N>) {
 fn main() {
     for filedir in std::fs::read_dir("imgs").expect("Wrong directory") {
         let file = filedir.expect("File not found").path();
-        for alg in &[ATKINSON, STUCKI] {
+        for alg in &[ATKINSON, JJN, STUCKI] {
             dither_file(&file, alg);
         }
-        // dither_file(&file, &FS);
+        dither_file(&file, &FS);
     }
 }
